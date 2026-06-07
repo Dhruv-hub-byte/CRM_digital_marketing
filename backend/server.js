@@ -22,6 +22,7 @@ app.use('/api/campaigns', require('./routes/campaigns'));
 app.use('/api/leads', require('./routes/leads'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/settings', require('./routes/settings'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));

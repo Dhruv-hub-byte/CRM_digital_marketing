@@ -57,4 +57,14 @@ export const adminAPI = {
   getStats: () => API.get('/admin/stats'),
 };
 
+export const settingsAPI = {
+  getProfile: () => API.get('/settings/profile'),
+  updateProfile: (data) => API.put('/settings/profile', data),
+  changePassword: (data) => API.put('/settings/password', data),
+  getAutomation: () => API.get('/settings/automation'),
+  saveAutomation: (data) => API.put('/settings/automation', data),
+  getSystemStats: () => API.get('/settings/admin/system'),
+  getAdminUsers: () => API.get('/settings/admin/users'),
+};
+
 export default API;

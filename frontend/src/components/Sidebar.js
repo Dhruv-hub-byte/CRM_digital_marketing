@@ -7,6 +7,7 @@ const navItems = [
   { label: 'Campaigns', icon: '📣', path: '/campaigns' },
   { label: 'Leads', icon: '👥', path: '/leads' },
   { label: 'Analytics', icon: '📈', path: '/analytics' },
+  { label: 'Settings', icon: '⚙️', path: '/settings' },
 ];
 
 const adminItems = [

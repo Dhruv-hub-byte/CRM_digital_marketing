@@ -11,6 +11,7 @@ import Leads from './pages/Leads';
 import Analytics from './pages/Analytics';
 import AdminUsers from './pages/AdminUsers';
 import AdminLogs from './pages/AdminLogs';
+import Settings from './pages/Settings';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -46,6 +47,7 @@ function AppRoutes() {
       <Route path="/analytics" element={<PrivateRoute><Analytics /></PrivateRoute>} />
       <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
       <Route path="/admin/logs" element={<AdminRoute><AdminLogs /></AdminRoute>} />
+      <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
