@@ -1,0 +1,256 @@
+import React, { useEffect, useState, useCallback } from 'react';
+import Layout from '../components/Layout';
+import { leadsAPI, campaignsAPI } from '../api';
+
+const STATUS_OPTS = ['new', 'contacted', 'qualified', 'converted', 'lost'];
+const BADGE = {
+  new: 'badge-new', contacted: 'badge-contacted',
+  qualified: 'badge-qualified', converted: 'badge-converted', lost: 'badge-lost',
+};
+
+const emptyForm = {
+  name: '', email: '', phone: '', company: '', job_title: '',
+  industry: '', linkedin_url: '', status: 'new', notes: '', campaign_id: '', source: 'linkedin'
+};
+
+export default function Leads() {
+  const [leads, setLeads] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [filters, setFilters] = useState({ status: '', campaign_id: '', search: '' });
+
+  const load = useCallback(() => {
+    const params = {};
+    if (filters.status) params.status = filters.status;
+    if (filters.campaign_id) params.campaign_id = filters.campaign_id;
+    if (filters.search) params.search = filters.search;
+    leadsAPI.getAll(params).then(r => setLeads(r.data)).finally(() => setLoading(false));
+  }, [filters]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { campaignsAPI.getAll().then(r => setCampaigns(r.data)); }, []);
+
+  const openCreate = () => { setEditing(null); setForm(emptyForm); setError(''); setShowModal(true); };
+  const openEdit = (l) => {
+    setEditing(l);
+    setForm({
+      name: l.name || '', email: l.email || '', phone: l.phone || '',
+      company: l.company || '', job_title: l.job_title || '',
+      industry: l.industry || '', linkedin_url: l.linkedin_url || '',
+      status: l.status || 'new', notes: l.notes || '',
+      campaign_id: l.campaign_id || '', source: l.source || 'linkedin',
+    });
+    setError(''); setShowModal(true);
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true); setError('');
+    try {
+      if (editing) {
+        await leadsAPI.update(editing.id, form);
+      } else {
+        await leadsAPI.create(form);
+      }
+      setShowModal(false); load();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this lead?')) return;
+    await leadsAPI.delete(id);
+    load();
+  };
+
+  const f = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  return (
+    <Layout
+      title="Leads"
+      subtitle="Track and manage your collected leads"
+      actions={<button className="btn btn-primary" onClick={openCreate}>+ Add Lead</button>}
+    >
+      {/* Filters */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-body" style={{ padding: '16px 24px' }}>
+          <div className="filter-row">
+            <div className="search-bar">
+              <span className="search-icon">🔍</span>
+              <input
+                placeholder="Search leads..."
+                value={filters.search}
+                onChange={e => setFilters({ ...filters, search: e.target.value })}
+              />
+            </div>
+            <select
+              className="filter-select"
+              value={filters.status}
+              onChange={e => setFilters({ ...filters, status: e.target.value })}
+            >
+              <option value="">All Statuses</option>
+              {STATUS_OPTS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+            </select>
+            <select
+              className="filter-select"
+              value={filters.campaign_id}
+              onChange={e => setFilters({ ...filters, campaign_id: e.target.value })}
+            >
+              <option value="">All Campaigns</option>
+              {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            {(filters.status || filters.campaign_id || filters.search) && (
+              <button className="btn btn-secondary btn-sm" onClick={() => setFilters({ status: '', campaign_id: '', search: '' })}>
+                Clear filters
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header">
+          <h3>{leads.length} Lead{leads.length !== 1 ? 's' : ''}</h3>
+        </div>
+        <div className="card-body" style={{ padding: 0 }}>
+          {loading ? (
+            <div className="empty-state"><div className="spinner" /></div>
+          ) : leads.length === 0 ? (
+            <div className="empty-state">
+              <div className="icon">👥</div>
+              <h3>No leads found</h3>
+              <p>Add leads manually or run a campaign to collect them automatically.</p>
+              <button className="btn btn-primary" onClick={openCreate}>Add Lead</button>
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Lead</th>
+                    <th>Company / Title</th>
+                    <th>Status</th>
+                    <th>Campaign</th>
+                    <th>Source</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leads.map(l => (
+                    <tr key={l.id}>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{l.name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{l.email}</div>
+                        {l.phone && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{l.phone}</div>}
+                      </td>
+                      <td>
+                        <div>{l.company || '-'}</div>
+                        {l.job_title && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{l.job_title}</div>}
+                      </td>
+                      <td>
+                        <span className={`badge ${BADGE[l.status]}`}>{l.status}</span>
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{l.campaign_name || '-'}</td>
+                      <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{l.source}</td>
+                      <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(l.created_at).toLocaleDateString()}</td>
+                      <td>
+                        <div className="actions-cell">
+                          <button className="btn btn-secondary btn-sm" onClick={() => openEdit(l)}>Edit</button>
+                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(l.id)}>Del</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{editing ? 'Edit Lead' : 'Add Lead'}</h2>
+              <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleSave}>
+              <div className="modal-body">
+                {error && <div className="alert alert-error">{error}</div>}
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Full Name *</label>
+                    <input value={form.name} onChange={f('name')} placeholder="Jane Doe" required />
+                  </div>
+                  <div className="form-group">
+                    <label>Email *</label>
+                    <input type="email" value={form.email} onChange={f('email')} placeholder="jane@company.com" required />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Phone</label>
+                    <input value={form.phone} onChange={f('phone')} placeholder="+91 98765 43210" />
+                  </div>
+                  <div className="form-group">
+                    <label>Company</label>
+                    <input value={form.company} onChange={f('company')} placeholder="Acme Corp" />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Job Title</label>
+                    <input value={form.job_title} onChange={f('job_title')} placeholder="Marketing Manager" />
+                  </div>
+                  <div className="form-group">
+                    <label>Industry</label>
+                    <input value={form.industry} onChange={f('industry')} placeholder="Technology" />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Status</label>
+                    <select value={form.status} onChange={f('status')}>
+                      {STATUS_OPTS.map(s => <option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Campaign</label>
+                    <select value={form.campaign_id} onChange={f('campaign_id')}>
+                      <option value="">None</option>
+                      {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>LinkedIn URL</label>
+                  <input value={form.linkedin_url} onChange={f('linkedin_url')} placeholder="https://linkedin.com/in/..." />
+                </div>
+                <div className="form-group">
+                  <label>Notes</label>
+                  <textarea value={form.notes} onChange={f('notes')} placeholder="Add notes about this lead..." rows={3} />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Saving...' : editing ? 'Update Lead' : 'Add Lead'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </Layout>
+  );
+}
