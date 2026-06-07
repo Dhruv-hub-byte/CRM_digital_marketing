@@ -8,10 +8,11 @@ const app = express();
 
 app.use(cors({
   origin: [
-    process.env.FRONTEND_URL,
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "https://crm-digital-marketing.vercel.app",
+    "https://crm-digital-marketing-6u4obwymz-dhruv-bansals-projects-32608c19.vercel.app"
   ],
-  credentials: true,
+  credentials: true
 }));
 app.use(express.json());
 
