@@ -67,4 +67,13 @@ export const settingsAPI = {
   getAdminUsers: () => API.get('/settings/admin/users'),
 };
 
+export const linkedinAPI = {
+  getAuthUrl: () => API.get('/linkedin/auth'),
+  getStatus: () => API.get('/linkedin/status'),
+  disconnect: () => API.delete('/linkedin/disconnect'),
+  getAdAccounts: () => API.get('/linkedin/ad-accounts'),
+  getCampaigns: (accountId) => API.get(`/linkedin/campaigns/${accountId}`),
+  getAnalytics: (accountId) => API.get(`/linkedin/analytics/${accountId}`),
+};
+
 export default API;

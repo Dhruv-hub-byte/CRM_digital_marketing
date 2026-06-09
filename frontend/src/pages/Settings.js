@@ -1,7 +1,110 @@
 import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
+import { linkedinAPI } from '../api';
 import { settingsAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
+
+function LinkedInConnect() {
+  const [connected, setConnected] = useState(false);
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    linkedinAPI.getStatus()
+      .then(r => {
+        setConnected(r.data.connected);
+        if (r.data.connected) {
+          return linkedinAPI.getAdAccounts().then(a => setAccounts(a.data));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleConnect = async () => {
+    setConnecting(true); setMsg('');
+    try {
+      await linkedinAPI.connect();
+      setConnected(true);
+      setMsg('✅ LinkedIn connected successfully');
+      const a = await linkedinAPI.getAdAccounts();
+      setAccounts(a.data);
+    } catch {
+      setMsg('❌ Connection failed');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!window.confirm('Disconnect LinkedIn?')) return;
+    await linkedinAPI.disconnect();
+    setConnected(false);
+    setAccounts([]);
+    setMsg('LinkedIn disconnected');
+  };
+
+  if (loading) return <div className="spinner" style={{ margin: '20px 0' }} />;
+
+  return (
+    <div>
+      <div style={{ fontWeight: 600, marginBottom: 8 }}>LinkedIn Ads</div>
+      <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
+        Connect your LinkedIn Ads account to sync campaigns and view analytics.
+      </div>
+
+      {msg && (
+        <div className={`alert ${msg.startsWith('✅') ? 'alert-success' : msg.startsWith('❌') ? 'alert-error' : 'alert-info'}`} style={{ marginBottom: 16 }}>
+          {msg}
+        </div>
+      )}
+
+      {connected ? (
+        <>
+          <div className="alert alert-success" style={{ marginBottom: 16 }}>
+            ✅ LinkedIn is connected
+          </div>
+
+          {accounts.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Ad Accounts
+              </div>
+              {accounts.map(acc => (
+                <div key={acc.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '10px 14px', background: 'var(--bg)',
+                  borderRadius: 'var(--radius-sm)', marginBottom: 8,
+                  fontSize: 14,
+                }}>
+                  <span>📣</span>
+                  <span style={{ fontWeight: 500 }}>{acc.name}</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>ID: {acc.id}</span>
+                  <span className="badge badge-active" style={{ marginLeft: 'auto' }}>{acc.status}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button className="btn btn-danger btn-sm" onClick={handleDisconnect}>
+            Disconnect LinkedIn
+          </button>
+        </>
+      ) : (
+        <button
+          className="btn btn-primary"
+          onClick={handleConnect}
+          disabled={connecting}
+          style={{ background: '#0a66c2' }}
+        >
+          {connecting ? 'Connecting...' : '🔗 Connect LinkedIn Account'}
+        </button>
+      )}
+    </div>
+  );
+}
 
 const Toggle = ({ checked, onChange, label, description }) => (
   <div style={{
@@ -364,45 +467,22 @@ function AdminSettings() {
         </div>
       )}
 
-      {tab === 'api' && (
-        <div className="card">
-          <div className="card-header"><h3>API & Integrations</h3></div>
-          <div className="card-body">
-            <div style={{ marginBottom: 28 }}>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>LinkedIn API</div>
-              <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
-                Connect your LinkedIn Ads account to enable automatic campaign launching and lead sync.
-              </div>
-              <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: 16, fontSize: 13, color: 'var(--text-muted)', border: '1px dashed var(--border)' }}>
-                🔗 LinkedIn API integration requires a LinkedIn Marketing Developer account. Configure your Client ID and Client Secret below.
-              </div>
-            </div>
+{tab === 'api' && (
+  <div className="card">
+    <div className="card-header"><h3>API & Integrations</h3></div>
+    <div className="card-body">
 
-            {[
-              { label: 'LinkedIn Client ID', placeholder: 'Enter your LinkedIn Client ID', type: 'text' },
-              { label: 'LinkedIn Client Secret', placeholder: 'Enter your Client Secret', type: 'password' },
-              { label: 'Webhook URL', placeholder: 'https://your-backend.onrender.com/api/webhooks/linkedin', type: 'text' },
-            ].map(field => (
-              <div className="form-group" key={field.label}>
-                <label>{field.label}</label>
-                <input type={field.type} placeholder={field.placeholder} />
-              </div>
-            ))}
+      <LinkedInConnect />
 
-            <div style={{ marginTop: 8, display: 'flex', gap: 12 }}>
-              <button className="btn btn-primary">Save API Settings</button>
-              <button className="btn btn-secondary">Test Connection</button>
-            </div>
-
-            <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--border)' }}>
-              <div style={{ fontWeight: 600, marginBottom: 12 }}>Security</div>
-              <Toggle checked={true} onChange={() => {}} label="Force HTTPS" description="Redirect all HTTP traffic to HTTPS" />
-              <Toggle checked={true} onChange={() => {}} label="JWT Token Expiry" description="Tokens expire after 7 days (recommended)" />
-              <Toggle checked={false} onChange={() => {}} label="Two-Factor Authentication" description="Require 2FA for all admin accounts" />
-            </div>
-          </div>
-        </div>
-      )}
+      <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--border)' }}>
+        <div style={{ fontWeight: 600, marginBottom: 12 }}>Security</div>
+        <Toggle checked={true} onChange={() => {}} label="Force HTTPS" description="Redirect all HTTP traffic to HTTPS" />
+        <Toggle checked={true} onChange={() => {}} label="JWT Token Expiry" description="Tokens expire after 7 days (recommended)" />
+        <Toggle checked={false} onChange={() => {}} label="Two-Factor Authentication" description="Require 2FA for all admin accounts" />
+      </div>
+    </div>
+  </div>
+)}
     </>
   );
 }
@@ -429,3 +509,4 @@ export default function Settings() {
     </Layout>
   );
 }
+
