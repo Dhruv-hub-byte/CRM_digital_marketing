@@ -1,10 +1,17 @@
 require('dotenv').config();
+
 console.log('DB URL loaded:', process.env.DATABASE_URL ? 'YES' : 'NO');
+
 const express = require('express');
 const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./swagger');
 const { initDB } = require('./db');
 
 const app = express();
+
+// Middleware
+app.use(express.json());
 
 app.use(cors({
   origin: [
@@ -14,7 +21,15 @@ app.use(cors({
   ],
   credentials: true
 }));
-app.use(express.json());
+
+// Swagger Documentation
+app.use(
+  '/api/docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    explorer: true
+  })
+);
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -24,17 +39,35 @@ app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/settings', require('./routes/settings'));
 
-// Health check
-app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+// Health Check
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
+});
 
-// Error handler
+// Error Handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Internal server error' });
+  console.error('Error:', err.stack);
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error'
+  });
 });
 
 const PORT = process.env.PORT || 5000;
 
-initDB().then(() => {
-  app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-});
+// Start Server
+initDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📖 Swagger Docs: http://localhost:${PORT}/api/docs`);
+    });
+  })
+  .catch((err) => {
+    console.error('Database connection failed:', err);
+    process.exit(1);
+  });
