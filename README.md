@@ -146,6 +146,30 @@ UPDATE users SET role = 'admin' WHERE email = 'your@email.com';
 | GET | /api/admin/logs | Audit logs |
 
 ---
+## API Documentation
+
+Swagger Documentation is available at:
+
+```text
+http://localhost:5000/api/docs
+```
+
+### Run Locally
+
+```bash
+npm install
+npm start
+```
+
+### Features
+
+- JWT Authentication
+- Lead Management
+- Campaign Management
+- Analytics Dashboard
+- Admin Controls
+- Settings Management
+- Swagger API Documentation
 
 ## Database Tables
 
