@@ -19,9 +19,13 @@ router.get('/users', async (req, res) => {
 // Update user role
 router.put('/users/:id/role', async (req, res) => {
   const { role } = req.body;
-  if (!['admin', 'user'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
+  if (!['admin', 'user', 'sales', 'viewer'].includes(role))
+    return res.status(400).json({ error: 'Invalid role' });
   try {
-    const result = await pool.query('UPDATE users SET role=$1 WHERE id=$2 RETURNING id, name, email, role', [role, req.params.id]);
+    const result = await pool.query(
+      'UPDATE users SET role=$1 WHERE id=$2 RETURNING id, name, email, role',
+      [role, req.params.id]
+    );
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });

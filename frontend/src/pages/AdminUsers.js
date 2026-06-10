@@ -11,9 +11,8 @@ export default function AdminUsers() {
   const load = () => adminAPI.getUsers().then(r => setUsers(r.data)).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
-  const toggleRole = async (u) => {
+  const changeRole = async (u, newRole) => {
     if (u.id === currentUser?.id) return alert("You can't change your own role");
-    const newRole = u.role === 'admin' ? 'user' : 'admin';
     if (!window.confirm(`Change ${u.name} to ${newRole}?`)) return;
     await adminAPI.updateRole(u.id, newRole);
     load();
@@ -62,10 +61,17 @@ export default function AdminUsers() {
                       <td><span className={`badge badge-${u.role}`}>{u.role}</span></td>
                       <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(u.created_at).toLocaleDateString()}</td>
                       <td>
-                        <div className="actions-cell">
-                          <button className="btn btn-secondary btn-sm" onClick={() => toggleRole(u)}>
-                            Make {u.role === 'admin' ? 'User' : 'Admin'}
-                          </button>
+                        <div className="actions-cell" style={{ flexWrap: 'wrap', gap: 6 }}>
+                          {['admin', 'user', 'sales', 'viewer'].filter(r => r !== u.role).map(r => (
+                            <button
+                              key={r}
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => changeRole(u, r)}
+                              style={{ fontSize: 12 }}
+                            >
+                              → {r}
+                            </button>
+                          ))}
                           <button className="btn btn-danger btn-sm" onClick={() => deleteUser(u)}>Delete</button>
                         </div>
                       </td>
