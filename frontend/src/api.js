@@ -43,6 +43,7 @@ export const leadsAPI = {
   update: (id, data) => API.put(`/leads/${id}`, data),
   delete: (id) => API.delete(`/leads/${id}`),
   addActivity: (id, data) => API.post(`/leads/${id}/activities`, data),
+  getSalesUsers: () => API.get('/leads/meta/sales-users'),
 };
 
 export const analyticsAPI = {
