@@ -86,6 +86,11 @@ router.post('/', auth, noViewer, async (req, res) => {
       [req.user.id, template_id || null, title, ad_copy, loom_url || null, status || 'draft',external_ad_url || null]
     );
     res.status(201).json(result.rows[0]);
+    await pool.query(
+  `INSERT INTO ad_audit_log (action, ad_id, creator_id, details)
+   VALUES ('created', $1, $2, $3)`,
+  [result.rows[0].id, req.user.id, JSON.stringify({ title: result.rows[0].title })]
+);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -110,6 +115,11 @@ router.get('/', auth, async (req, res) => {
     
     const result = await pool.query(query, isAdmin ? [] : [req.user.id]);
     res.json(result.rows);
+    await pool.query(
+  `INSERT INTO ad_audit_log (action, ad_id, creator_id, details)
+   VALUES ('edited', $1, $2, $3)`,
+  [result.rows[0].id, req.user.id, JSON.stringify({ title: result.rows[0].title })]
+);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -144,6 +154,11 @@ router.put('/:id', auth, noViewer, async (req, res) => {
     );
     if (result.rows.length === 0) return res.status(403).json({ error: 'Not authorized' });
     res.json(result.rows[0]);
+    await pool.query(
+  `INSERT INTO ad_audit_log (action, ad_id, creator_id, details)
+   VALUES ('edited', $1, $2, $3)`,
+  [result.rows[0].id, req.user.id, JSON.stringify({ title: result.rows[0].title })]
+);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -176,6 +191,11 @@ router.post('/:id/publish', auth, noViewer, async (req, res) => {
 router.delete('/:id', auth, noViewer, async (req, res) => {
   try {
     await pool.query('DELETE FROM marketing_ads WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    await pool.query(
+  `INSERT INTO ad_audit_log (action, ad_id, creator_id, details)
+   VALUES ('edited', $1, $2, $3)`,
+  [result.rows[0].id, req.user.id, JSON.stringify({ title: result.rows[0].title })]
+);
     res.json({ message: 'Ad deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
