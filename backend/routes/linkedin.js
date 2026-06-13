@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const { auth } = require('../middleware/auth');
+const { noViewer } = require('../middleware/auth');
 const { pool } = require('../db');
 
 const LI_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
@@ -9,7 +10,7 @@ const LI_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
 const REDIRECT_URI = process.env.LINKEDIN_REDIRECT_URI;
 
 // Start OAuth flow
-router.post('/connect', auth, async (req, res) => {
+router.post('/connect', auth, noViewer, async (req, res) => {
   try {
     const scope = 'r_ads rw_ads r_ads_reporting';
     const state = req.user.id;

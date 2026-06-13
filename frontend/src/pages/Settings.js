@@ -26,14 +26,10 @@ function LinkedInConnect() {
 const handleConnect = async () => {
   setConnecting(true); setMsg('');
   try {
-    await linkedinAPI.connect();
-    setConnected(true);
-    setMsg('✅ LinkedIn connected successfully');
-    const a = await linkedinAPI.getAdAccounts();
-    setAccounts(a.data);
+    const res = await linkedinAPI.connect();
+    window.location.href = res.data.url;
   } catch (err) {
     setMsg('❌ ' + (err.response?.data?.error || 'Connection failed'));
-  } finally {
     setConnecting(false);
   }
 };
