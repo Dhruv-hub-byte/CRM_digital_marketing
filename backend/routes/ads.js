@@ -24,6 +24,9 @@ router.post('/generate-copy', auth, async (req, res) => {
     if (template.rows.length === 0) return res.status(404).json({ error: 'Template not found' });
 
     const tmpl = template.rows[0];
+    console.log('Template:', tmpl);
+console.log('Variables received:', variables);
+console.log('Prompt will be built from placeholders:', tmpl.placeholders);
     let prompt = `Generate a LinkedIn marketing ad copy based on this template:\n\n`;
     prompt += `Template: ${tmpl.structure}\n`;
     prompt += `Available placeholders: ${tmpl.placeholders.join(', ')}\n\n`;
