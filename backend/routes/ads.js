@@ -50,19 +50,27 @@ console.log('Prompt will be built from placeholders:', tmpl.placeholders);
       const response = await axios.post(
           'https://api.groq.com/openai/v1/chat/completions',
           {
-              model: 'llama3-8b-8192',
+              model: 'llama-3.1-8b-instant',
               messages: [{ role: 'user', content: prompt }],
               max_tokens: 300,
               temperature: 0.7,
           },
-          { headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` } }
+          { headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` ,
+         'Content-Type': 'application/json',} }
       );
 
+      console.log('Groq response status:', response.status);
     const adCopy = response.data.choices[0].message.content.trim();
     res.json({ ad_copy: adCopy });
   } catch (err) {
-    console.error('ChatGPT error:', err.message);
-    res.status(500).json({ error: 'Failed to generate copy. Check API key.' });
+    // console.error('ChatGPT error:', err.message);
+     console.error('Groq error status:', err.response?.status);
+    console.error('Groq error data:', JSON.stringify(err.response?.data));
+    console.error('Groq error message:', err.message);
+    // res.status(500).json({ error: 'Failed to generate copy. Check API key.' });
+    res.status(500).json({
+      error: err.response?.data?.error?.message || err.message
+    });
   }
 });
 
