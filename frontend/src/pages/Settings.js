@@ -23,20 +23,20 @@ function LinkedInConnect() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleConnect = async () => {
-    setConnecting(true); setMsg('');
-    try {
-      await linkedinAPI.connect();
-      setConnected(true);
-      setMsg('✅ LinkedIn connected successfully');
-      const a = await linkedinAPI.getAdAccounts();
-      setAccounts(a.data);
-    } catch {
-      setMsg('❌ Connection failed');
-    } finally {
-      setConnecting(false);
-    }
-  };
+const handleConnect = async () => {
+  setConnecting(true); setMsg('');
+  try {
+    await linkedinAPI.connect();
+    setConnected(true);
+    setMsg('✅ LinkedIn connected successfully');
+    const a = await linkedinAPI.getAdAccounts();
+    setAccounts(a.data);
+  } catch (err) {
+    setMsg('❌ ' + (err.response?.data?.error || 'Connection failed'));
+  } finally {
+    setConnecting(false);
+  }
+};
 
   const handleDisconnect = async () => {
     if (!window.confirm('Disconnect LinkedIn?')) return;
