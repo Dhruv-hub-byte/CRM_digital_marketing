@@ -154,7 +154,7 @@ router.put('/:id', auth, noViewer, async (req, res) => {
       `INSERT INTO ad_audit_log (action, ad_id, creator_id, details)
        VALUES ('updated', $1, $2, $3)`,
       [result.rows[0].id, req.user.id, JSON.stringify({ title: result.rows[0].title })]
-    );}
+    );
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
