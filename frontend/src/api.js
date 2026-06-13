@@ -69,9 +69,9 @@ export const settingsAPI = {
 };
 
 export const linkedinAPI = {
-  getAuthUrl: () => API.get('/linkedin/auth'),
-  getStatus: () => API.get('/linkedin/status'),
+  connect: () => API.post('/linkedin/connect'),
   disconnect: () => API.delete('/linkedin/disconnect'),
+  getStatus: () => API.get('/linkedin/status'),
   getAdAccounts: () => API.get('/linkedin/ad-accounts'),
   getCampaigns: (accountId) => API.get(`/linkedin/campaigns/${accountId}`),
   getAnalytics: (accountId) => API.get(`/linkedin/analytics/${accountId}`),
