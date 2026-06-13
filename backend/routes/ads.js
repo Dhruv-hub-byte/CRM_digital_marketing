@@ -115,11 +115,6 @@ router.get('/', auth, async (req, res) => {
     
     const result = await pool.query(query, isAdmin ? [] : [req.user.id]);
     res.json(result.rows);
-    await pool.query(
-  `INSERT INTO ad_audit_log (action, ad_id, creator_id, details)
-   VALUES ('edited', $1, $2, $3)`,
-  [result.rows[0].id, req.user.id, JSON.stringify({ title: result.rows[0].title })]
-);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -145,20 +140,21 @@ router.get('/:id', auth, async (req, res) => {
 
 // Update ad
 router.put('/:id', auth, noViewer, async (req, res) => {
-  const { title, ad_copy, loom_url, status } = req.body;
+  const { title, ad_copy, loom_url, status, external_ad_url } = req.body;
+  const isAdmin = req.user.role === 'admin';
   try {
     const result = await pool.query(
-      `UPDATE marketing_ads SET title=$1, ad_copy=$2, loom_url=$3, status=$4, updated_at=NOW()
-       WHERE id=$5 AND user_id=$6 RETURNING *`,
-      [title, ad_copy, loom_url || null, status, req.params.id, req.user.id]
+      `UPDATE marketing_ads SET title=$1, ad_copy=$2, loom_url=$3, status=$4, external_ad_url=$5, updated_at=NOW()
+       WHERE id=$6 AND (user_id=$7 OR $8::boolean) RETURNING *`,
+      [title, ad_copy, loom_url || null, status, external_ad_url || null, req.params.id, req.user.id, isAdmin]
     );
     if (result.rows.length === 0) return res.status(403).json({ error: 'Not authorized' });
     res.json(result.rows[0]);
     await pool.query(
-  `INSERT INTO ad_audit_log (action, ad_id, creator_id, details)
-   VALUES ('edited', $1, $2, $3)`,
-  [result.rows[0].id, req.user.id, JSON.stringify({ title: result.rows[0].title })]
-);
+      `INSERT INTO ad_audit_log (action, ad_id, creator_id, details)
+       VALUES ('updated', $1, $2, $3)`,
+      [result.rows[0].id, req.user.id, JSON.stringify({ title: result.rows[0].title })]
+    );}
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -190,12 +186,13 @@ router.post('/:id/publish', auth, noViewer, async (req, res) => {
 // Delete ad
 router.delete('/:id', auth, noViewer, async (req, res) => {
   try {
-    await pool.query('DELETE FROM marketing_ads WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    const result = await pool.query('DELETE FROM marketing_ads WHERE id=$1 AND user_id=$2 RETURNING *', [req.params.id, req.user.id]);
+    if (result.rows.length === 0) return res.status(403).json({ error: 'Not authorized' });
     await pool.query(
-  `INSERT INTO ad_audit_log (action, ad_id, creator_id, details)
-   VALUES ('edited', $1, $2, $3)`,
-  [result.rows[0].id, req.user.id, JSON.stringify({ title: result.rows[0].title })]
-);
+      `INSERT INTO ad_audit_log (action, ad_id, creator_id, details)
+       VALUES ('deleted', $1, $2, $3)`,
+      [result.rows[0].id, req.user.id, JSON.stringify({ title: result.rows[0].title })]
+    );
     res.json({ message: 'Ad deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
