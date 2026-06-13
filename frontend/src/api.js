@@ -77,4 +77,17 @@ export const linkedinAPI = {
   getAnalytics: (accountId) => API.get(`/linkedin/analytics/${accountId}`),
 };
 
+export const adsAPI = {
+  getTemplates: () => API.get('/ads/templates'),
+  generateCopy: (data) => API.post('/ads/generate-copy', data),
+  getAll: () => API.get('/ads'),
+  getOne: (id) => API.get(`/ads/${id}`),
+  create: (data) => API.post('/ads', data),
+  update: (id, data) => API.put(`/ads/${id}`, data),
+  publish: (id) => API.post(`/ads/${id}/publish`),
+  delete: (id) => API.delete(`/ads/${id}`),
+  auditAllAds: () => API.get('/ads/audit/all-ads'),
+  auditLogs: () => API.get('/ads/audit/logs'),
+};
+
 export default API;

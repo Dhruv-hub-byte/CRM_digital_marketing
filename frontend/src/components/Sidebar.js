@@ -8,6 +8,7 @@ const allNavItems = [
   { label: 'Leads', icon: '👥', path: '/leads', roles: ['admin', 'user', 'sales'] },
   { label: 'Analytics', icon: '📈', path: '/analytics', roles: ['admin', 'user', 'viewer'] },
   { label: 'LinkedIn Ads', icon: '🔗', path: '/linkedin', roles: ['admin', 'user'] },
+  { label: 'Ads', icon: '📢', path: '/ads', roles: ['admin', 'user', 'sales'] },
   { label: 'Settings', icon: '⚙️', path: '/settings', roles: ['admin', 'user', 'sales', 'viewer'] },
 ];
 

@@ -39,6 +39,7 @@ app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/linkedin', require('./routes/linkedin'));
+app.use('/api/ads', require('./routes/ads'));
 
 // Health Check
 app.get('/api/health', (req, res) => {

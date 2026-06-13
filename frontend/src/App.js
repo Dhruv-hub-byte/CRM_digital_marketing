@@ -13,6 +13,7 @@ import AdminUsers from './pages/AdminUsers';
 import AdminLogs from './pages/AdminLogs';
 import Settings from './pages/Settings';
 import LinkedIn from './pages/LinkedIn';
+import Ads from './pages/Ads';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -51,6 +52,7 @@ function AppRoutes() {
       <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
       <Route path="/linkedin" element={<PrivateRoute><LinkedIn /></PrivateRoute>} />
+      <Route path="/ads" element={<PrivateRoute><Ads /></PrivateRoute>} />
     </Routes>
   );
 }
