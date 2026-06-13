@@ -76,14 +76,14 @@ console.log('Prompt will be built from placeholders:', tmpl.placeholders);
 
 // Create ad
 router.post('/', auth, noViewer, async (req, res) => {
-  const { template_id, title, ad_copy, loom_url, status } = req.body;
+  const { template_id, title, ad_copy, loom_url, status, external_ad_url } = req.body;
   if (!title || !ad_copy) return res.status(400).json({ error: 'Title and copy required' });
 
   try {
     const result = await pool.query(
-      `INSERT INTO marketing_ads (user_id, template_id, title, ad_copy, loom_url, status)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [req.user.id, template_id || null, title, ad_copy, loom_url || null, status || 'draft']
+      `INSERT INTO marketing_ads (user_id, template_id, title, ad_copy, loom_url, status,external_ad_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [req.user.id, template_id || null, title, ad_copy, loom_url || null, status || 'draft',external_ad_url || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
