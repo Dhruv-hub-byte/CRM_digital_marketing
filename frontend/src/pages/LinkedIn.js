@@ -22,6 +22,21 @@ export default function LinkedIn() {
   const [connecting, setConnecting] = useState(false);
   const [msg, setMsg] = useState('');
 
+
+  useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('connected') === 'true') {
+    setConnected(true);
+    setMsg('✅ LinkedIn connected successfully');
+    loadAccounts();
+    window.history.replaceState({}, '', '/linkedin');
+  }
+  if (params.get('error')) {
+    setMsg('❌ LinkedIn connection failed. Try again.');
+    window.history.replaceState({}, '', '/linkedin');
+  }
+}, []);
+
   useEffect(() => {
     linkedinAPI.getStatus()
       .then(r => {
@@ -64,14 +79,10 @@ export default function LinkedIn() {
 const handleConnect = async () => {
   setConnecting(true); setMsg('');
   try {
-    await linkedinAPI.connect();
-    setConnected(true);
-    setMsg('✅ LinkedIn connected successfully');
-    await loadAccounts();
+    const res = await linkedinAPI.connect();
+    window.location.href = res.data.url;
   } catch (err) {
-    console.log('Connect error:', err.response?.status, err.response?.data);
-    setMsg('❌ ' + (err.response?.data?.error || err.message || 'Connection failed'));
-  } finally {
+    setMsg('❌ ' + (err.response?.data?.error || 'Connection failed'));
     setConnecting(false);
   }
 };
