@@ -33,16 +33,27 @@ router.post('/generate-copy', auth, async (req, res) => {
     });
     prompt += `\nMake it compelling, concise (max 150 words), and LinkedIn-appropriate. No hashtags.`;
 
-    const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 300,
-        temperature: 0.7,
-      },
-      { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` } }
-    );
+    // const response = await axios.post(
+    //   'https://api.openai.com/v1/chat/completions',
+    //   {
+    //     model: 'gpt-3.5-turbo',
+    //     messages: [{ role: 'user', content: prompt }],
+    //     max_tokens: 300,
+    //     temperature: 0.7,
+    //   },
+    //   { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` } }
+    // );
+
+      const response = await axios.post(
+          'https://api.groq.com/openai/v1/chat/completions',
+          {
+              model: 'llama3-8b-8192',
+              messages: [{ role: 'user', content: prompt }],
+              max_tokens: 300,
+              temperature: 0.7,
+          },
+          { headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` } }
+      );
 
     const adCopy = response.data.choices[0].message.content.trim();
     res.json({ ad_copy: adCopy });

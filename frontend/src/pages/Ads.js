@@ -272,6 +272,7 @@ export default function Ads() {
                       />
                     </div>
                   )}
+                  
                 </div>
               </div>
               <div className="modal-footer">
