@@ -41,6 +41,16 @@ app.use('/api/settings', require('./routes/settings'));
 app.use('/api/linkedin', require('./routes/linkedin'));
 app.use('/api/ads', require('./routes/ads'));
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({
+    message: 'CRM API Server',
+    version: '1.0.0',
+    docs: '/api/docs',
+    health: '/api/health'
+  });
+});
+
 // Health Check
 app.get('/api/health', (req, res) => {
   res.status(200).json({
