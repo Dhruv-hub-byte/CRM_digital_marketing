@@ -2,8 +2,14 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+const ROLE_OPTIONS = [
+  { value: 'user', label: 'Manager', desc: 'Full access to campaigns, leads, and analytics' },
+  { value: 'sales', label: 'Sales Rep', desc: 'View and manage assigned leads only' },
+  { value: 'viewer', label: 'Viewer', desc: 'Read-only access to reports and dashboards' },
+];
+
 export default function Register() {
-  const [form, setForm] = useState({ name: '', email: '', password: '', company: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', company: '', role: 'user' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
@@ -70,7 +76,36 @@ export default function Register() {
               <label>Password</label>
               <input type="password" placeholder="Min. 8 characters" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required minLength={6} />
             </div>
-            <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading}>
+            
+            <div className="form-group">
+              <label>Your Role</label>
+              <div style={{ display: 'grid', gap: 10 }}>
+                {ROLE_OPTIONS.map(opt => (
+                  <label key={opt.value} style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                    padding: 12, border: '2px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                    backgroundColor: form.role === opt.value ? 'var(--bg-secondary)' : 'transparent',
+                    borderColor: form.role === opt.value ? 'var(--primary)' : 'var(--border)',
+                    transition: 'all 0.2s'
+                  }}>
+                    <input
+                      type="radio"
+                      value={opt.value}
+                      checked={form.role === opt.value}
+                      onChange={e => setForm({ ...form, role: e.target.value })}
+                      style={{ marginTop: 2 }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{opt.label}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{opt.desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+            
+            <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} style={{ marginTop: 20 }}>
               {loading ? 'Creating account...' : 'Create Account'}
             </button>
           </form>

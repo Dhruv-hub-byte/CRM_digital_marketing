@@ -7,18 +7,22 @@ const { auth } = require('../middleware/auth');
 
 // Register
 router.post('/register', async (req, res) => {
-  const { name, email, password, company } = req.body;
+  const { name, email, password, company, role } = req.body;
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'Name, email and password are required' });
   }
+  
+  const allowedRoles = ['user', 'sales', 'viewer'];
+  const userRole = role && allowedRoles.includes(role) ? role : 'user';
+  
   try {
     const exists = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
     if (exists.rows.length > 0) return res.status(400).json({ error: 'Email already registered' });
 
     const hashed = await bcrypt.hash(password, 10);
     const result = await pool.query(
-      'INSERT INTO users (name, email, password, company) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role, company',
-      [name, email, hashed, company || null]
+      'INSERT INTO users (name, email, password, company, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role, company',
+      [name, email, hashed, company || null, userRole]
     );
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
