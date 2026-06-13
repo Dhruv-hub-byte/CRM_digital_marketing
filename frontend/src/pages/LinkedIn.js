@@ -61,19 +61,20 @@ export default function LinkedIn() {
     }
   };
 
-  const handleConnect = async () => {
-    setConnecting(true); setMsg('');
-    try {
-      await linkedinAPI.connect();
-      setConnected(true);
-      setMsg('✅ LinkedIn connected successfully');
-      await loadAccounts();
-    } catch {
-      setMsg('❌ Connection failed. Please try again.');
-    } finally {
-      setConnecting(false);
-    }
-  };
+const handleConnect = async () => {
+  setConnecting(true); setMsg('');
+  try {
+    await linkedinAPI.connect();
+    setConnected(true);
+    setMsg('✅ LinkedIn connected successfully');
+    await loadAccounts();
+  } catch (err) {
+    console.log('Connect error:', err.response?.status, err.response?.data);
+    setMsg('❌ ' + (err.response?.data?.error || err.message || 'Connection failed'));
+  } finally {
+    setConnecting(false);
+  }
+};
 
   const handleDisconnect = async () => {
     if (!window.confirm('Disconnect LinkedIn? This will remove all synced data.')) return;
