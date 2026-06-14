@@ -75,6 +75,8 @@ export const linkedinAPI = {
   getAdAccounts: () => API.get('/linkedin/ad-accounts'),
   getCampaigns: (accountId) => API.get(`/linkedin/campaigns/${accountId}`),
   getAnalytics: (accountId) => API.get(`/linkedin/analytics/${accountId}`),
+  createCampaign: (data) => API.post('/linkedin/campaigns', data),
+  publishAd: (data) => API.post('/linkedin/publish-ad', data),
 };
 
 export const adsAPI = {

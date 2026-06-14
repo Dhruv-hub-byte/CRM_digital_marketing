@@ -34,6 +34,7 @@ export default function LinkedIn() {
   if (params.get('error')) {
     setMsg('❌ LinkedIn connection failed. Try again.');
     window.history.replaceState({}, '', '/linkedin');
+    setLoading(false);
   }
 }, []);
 
@@ -86,6 +87,7 @@ const handleConnect = async () => {
     setConnecting(false);
   }
 };
+
 
   const handleDisconnect = async () => {
     if (!window.confirm('Disconnect LinkedIn? This will remove all synced data.')) return;

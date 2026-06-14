@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { campaignsAPI } from '../api';
+import { linkedinAPI } from '../api';
 
 const STATUS_OPTS = ['draft', 'active', 'paused', 'completed'];
 const BADGE = { draft: 'badge-draft', active: 'badge-active', paused: 'badge-paused', completed: 'badge-completed' };
@@ -40,23 +41,37 @@ export default function Campaigns() {
     setShowModal(true);
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setSaving(true); setError('');
-    try {
-      if (editing) {
-        await campaignsAPI.update(editing.id, form);
-      } else {
-        await campaignsAPI.create(form);
+const handleSave = async (e) => {
+  e.preventDefault();
+  setSaving(true); setError('');
+  try {
+    if (editing) {
+      await campaignsAPI.update(editing.id, form);
+    } else {
+      // Try to create on LinkedIn too
+      try {
+        await linkedinAPI.createCampaign({
+          name: form.name,
+          objective: form.objective,
+          budget: form.budget,
+          start_date: form.start_date,
+          end_date: form.end_date,
+          account_id: '547650018',
+        });
+      } catch (liErr) {
+        console.warn('LinkedIn campaign creation failed:', liErr.message);
+        // Still save locally even if LinkedIn fails
       }
-      setShowModal(false);
-      load();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Save failed');
-    } finally {
-      setSaving(false);
+      await campaignsAPI.create(form);
     }
-  };
+    setShowModal(false);
+    load();
+  } catch (err) {
+    setError(err.response?.data?.error || 'Save failed');
+  } finally {
+    setSaving(false);
+  }
+};
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this campaign?')) return;

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { adsAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { linkedinAPI } from '../api';
 
 const STATUS_BADGE = {
   draft: 'badge-draft',
@@ -108,17 +109,33 @@ export default function Ads() {
     }
   };
 
-  const handlePublish = async (id) => {
-    if (!window.confirm('Publish this ad?')) return;
-    try {
-      await adsAPI.publish(id);
-      load();
-      setSuccess('✅ Ad published');
-      setTimeout(() => setSuccess(''), 2000);
-    } catch {
-      setError('❌ Publish failed');
-    }
-  };
+const handlePublish = async (id) => {
+  if (!window.confirm('Publish this ad to LinkedIn?')) return;
+  try {
+    const ad = ads.find(a => a.id === id);
+    if (!ad) return;
+
+    // Publish to LinkedIn
+    const liRes = await linkedinAPI.publishAd({
+      ad_copy: ad.ad_copy,
+      loom_url: ad.loom_url || null,
+      campaign_id: id,
+    });
+
+    // Mark as published locally
+    await adsAPI.publish(id);
+    load();
+
+    setSuccess(
+      `✅ Ad published to LinkedIn! ` +
+      (liRes.data.linkedin_post_url
+        ? `View it here: ${liRes.data.linkedin_post_url}`
+        : '')
+    );
+  } catch (err) {
+    setError('❌ ' + (err.response?.data?.error || 'Publish failed'));
+  }
+};
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this ad?')) return;
