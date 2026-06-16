@@ -46,6 +46,7 @@ const initDB = async () => {
         id SERIAL PRIMARY KEY,
         campaign_id INTEGER REFERENCES campaigns(id) ON DELETE SET NULL,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) NOT NULL,
         phone VARCHAR(50),
@@ -97,6 +98,39 @@ const initDB = async () => {
         setting_key VARCHAR(255) NOT NULL,
         setting_value TEXT,
         is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, setting_key)
+      );
+
+      CREATE TABLE IF NOT EXISTS ad_templates (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        structure TEXT NOT NULL,
+        placeholders TEXT[] DEFAULT ARRAY[]::TEXT[],
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS marketing_ads (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        template_id INTEGER REFERENCES ad_templates(id) ON DELETE SET NULL,
+        title VARCHAR(255) NOT NULL,
+        ad_copy TEXT NOT NULL,
+        loom_url VARCHAR(500),
+        external_ad_url VARCHAR(500),
+        status VARCHAR(50) DEFAULT 'draft',
+        published_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS ad_audit_log (
+        id SERIAL PRIMARY KEY,
+        action VARCHAR(100) NOT NULL,
+        ad_id INTEGER REFERENCES marketing_ads(id) ON DELETE CASCADE,
+        creator_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        details TEXT,
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
