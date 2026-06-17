@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Toast from './components/Toast';
 import './index.css';
 
 import Login from './pages/Login';
@@ -48,25 +47,22 @@ function AppRoutes() {
       <Route path="/campaigns" element={<PrivateRoute><Campaigns /></PrivateRoute>} />
       <Route path="/leads" element={<PrivateRoute><Leads /></PrivateRoute>} />
       <Route path="/analytics" element={<PrivateRoute><Analytics /></PrivateRoute>} />
-      <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
-      <Route path="/admin/logs" element={<AdminRoute><AdminLogs /></AdminRoute>} />
       <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
       <Route path="/linkedin" element={<PrivateRoute><LinkedIn /></PrivateRoute>} />
       <Route path="/ads" element={<PrivateRoute><Ads /></PrivateRoute>} />
+      <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+      <Route path="/admin/logs" element={<AdminRoute><AdminLogs /></AdminRoute>} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }
 
 export default function App() {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <Toast />
-          <AppRoutes />
-        </BrowserRouter>
-      </AuthProvider>
-    </ToastProvider>
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
