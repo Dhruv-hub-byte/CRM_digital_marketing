@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
-const { auth, noViewer, salesOrAbove } = require('../middleware/auth');
+const { auth, noViewer } = require('../middleware/auth');
+const { sendEmail, isEnabled, getUserEmail, templates } = require('../utils/email');
 
 // Get all leads
 router.get('/', auth, async (req, res) => {
@@ -17,7 +18,6 @@ router.get('/', auth, async (req, res) => {
     const params = [];
     let idx = 1;
 
-    // Sales people only see their assigned leads
     if (role === 'sales') {
       query += ` AND (l.assigned_to = $${idx} OR l.user_id = $${idx})`;
       params.push(req.user.id); idx++;
@@ -63,7 +63,7 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// Create lead — sales and above only, viewers blocked
+// Create lead
 router.post('/', auth, noViewer, async (req, res) => {
   const { campaign_id, name, email, phone, company, job_title, industry, linkedin_url, status, notes, source, assigned_to } = req.body;
   if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
@@ -73,10 +73,24 @@ router.post('/', auth, noViewer, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
       [campaign_id || null, req.user.id, name, email, phone, company, job_title, industry, linkedin_url, status || 'new', notes, source || 'linkedin', assigned_to || null]
     );
+
     if (campaign_id) {
       await pool.query('UPDATE campaigns SET leads_count = leads_count + 1 WHERE id = $1', [campaign_id]);
     }
+
+    // Send response first — email is secondary, must not block or break response
     res.status(201).json(result.rows[0]);
+
+    // Fire email after response — completely isolated
+    const savedLead = result.rows[0];
+    getUserEmail(pool, req.user.id).then(async (userInfo) => {
+      if (!userInfo) return;
+      const enabled = await isEnabled(pool, req.user.id, 'lead_alerts');
+      if (!enabled) return;
+      const { subject, html } = templates.newLead(userInfo.name, savedLead);
+      await sendEmail(userInfo.email, subject, html);
+    }).catch(e => console.error('New lead email error:', e.message));
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -87,30 +101,50 @@ router.put('/:id', auth, noViewer, async (req, res) => {
   const { name, email, phone, company, job_title, industry, linkedin_url, status, notes, assigned_to } = req.body;
   const role = req.user.role;
   try {
-    // Sales can only update status and notes on their assigned leads
+    // Get old status before update for comparison
+    const oldLead = await pool.query('SELECT status FROM leads WHERE id=$1', [req.params.id]);
+    const oldStatus = oldLead.rows[0]?.status;
+
+    let result;
+
     if (role === 'sales') {
-      const result = await pool.query(
+      result = await pool.query(
         `UPDATE leads SET status=$1, notes=$2, updated_at=NOW()
          WHERE id=$3 AND (assigned_to=$4 OR user_id=$4) RETURNING *`,
         [status, notes, req.params.id, req.user.id]
       );
-      if (result.rows.length === 0) return res.status(403).json({ error: 'Not authorized to edit this lead' });
-      return res.json(result.rows[0]);
+      if (result.rows.length === 0)
+        return res.status(403).json({ error: 'Not authorized to edit this lead' });
+    } else {
+      result = await pool.query(
+        `UPDATE leads SET name=$1, email=$2, phone=$3, company=$4, job_title=$5, industry=$6, 
+         linkedin_url=$7, status=$8, notes=$9, assigned_to=$10, updated_at=NOW()
+         WHERE id=$11 RETURNING *`,
+        [name, email, phone, company, job_title, industry, linkedin_url, status, notes, assigned_to || null, req.params.id]
+      );
     }
-    // Admin and user can update everything
-    const result = await pool.query(
-      `UPDATE leads SET name=$1, email=$2, phone=$3, company=$4, job_title=$5, industry=$6, 
-       linkedin_url=$7, status=$8, notes=$9, assigned_to=$10, updated_at=NOW()
-       WHERE id=$11 RETURNING *`,
-      [name, email, phone, company, job_title, industry, linkedin_url, status, notes, assigned_to || null, req.params.id]
-    );
+
+    // Send response first
     res.json(result.rows[0]);
+
+    // Fire email after response if status changed
+    const updatedLead = result.rows[0];
+    if (oldStatus && oldStatus !== updatedLead.status) {
+      getUserEmail(pool, req.user.id).then(async (userInfo) => {
+        if (!userInfo) return;
+        const enabled = await isEnabled(pool, req.user.id, 'lead_alerts');
+        if (!enabled) return;
+        const { subject, html } = templates.leadStatusChanged(userInfo.name, updatedLead, oldStatus);
+        await sendEmail(userInfo.email, subject, html);
+      }).catch(e => console.error('Status change email error:', e.message));
+    }
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Delete lead — admin and user only
+// Delete lead
 router.delete('/:id', auth, async (req, res) => {
   if (!['admin', 'user'].includes(req.user.role))
     return res.status(403).json({ error: 'Not authorized to delete leads' });
@@ -122,7 +156,7 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// Add activity — sales and above
+// Add activity
 router.post('/:id/activities', auth, noViewer, async (req, res) => {
   const { activity_type, description } = req.body;
   try {
@@ -136,7 +170,7 @@ router.post('/:id/activities', auth, noViewer, async (req, res) => {
   }
 });
 
-// Get sales users for assignment dropdown
+// Sales users for assignment dropdown
 router.get('/meta/sales-users', auth, async (req, res) => {
   try {
     const result = await pool.query(

@@ -7,7 +7,7 @@ const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const { initDB } = require('./db');
-
+const { sendWeeklyReports } = require('./utils/weeklyReport');
 const app = express();
 
 // Middleware
@@ -83,3 +83,12 @@ initDB()
     console.error('Database connection failed:', err);
     process.exit(1);
   });
+
+  // Run weekly report every Monday at 9am
+const checkWeeklyReport = () => {
+  const now = new Date();
+  if (now.getDay() === 1 && now.getHours() === 9 && now.getMinutes() === 0) {
+    sendWeeklyReports();
+  }
+};
+setInterval(checkWeeklyReport, 60 * 1000); // check every minute

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
 const { auth } = require('../middleware/auth');
+const { sendEmail, isEnabled, getUserEmail, templates } = require('../utils/email');
 
 // Get all campaigns for user
 router.get('/', auth, async (req, res) => {
@@ -43,6 +44,15 @@ router.post('/', auth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+
+  try {
+  const userInfo = await getUserEmail(pool, req.user.id);
+  const enabled = await isEnabled(pool, req.user.id, 'email_notifications');
+  if (userInfo && enabled) {
+    const { subject, html } = templates.campaignCreated(userInfo.name, result.rows[0]);
+    await sendEmail(userInfo.email, subject, html);
+  }
+} catch (e) { console.error('Email trigger error:', e.message); }
 });
 
 // Update campaign
