@@ -3,9 +3,9 @@ import Layout from '../components/Layout';
 import { adsAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { linkedinAPI } from '../api';
-import useToastContext from '../hooks/useToastContext';
+import { showToast } from '../utils/toast';
 
-const showToast = useToastContext();
+
 
 const STATUS_BADGE = {
   draft: 'badge-draft',

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { campaignsAPI } from '../api';
 import { linkedinAPI } from '../api';
-import useToastContext from '../hooks/useToastContext';
+import { showToast } from '../utils/toast';
 
 
 const STATUS_OPTS = ['draft', 'active', 'paused', 'completed'];
@@ -21,7 +21,7 @@ export default function Campaigns() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const showToast = useToastContext();
+
 
   const load = () => {
     campaignsAPI.getAll().then(r => setCampaigns(r.data)).finally(() => setLoading(false));

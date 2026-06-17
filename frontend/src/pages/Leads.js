@@ -2,9 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { leadsAPI, campaignsAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
-import useToastContext from '../hooks/useToastContext';
-
-const showToast = useToastContext();
+import { showToast } from '../utils/toast';
 
 const STATUS_OPTS = ['new', 'contacted', 'qualified', 'converted', 'lost'];
 const BADGE = {
