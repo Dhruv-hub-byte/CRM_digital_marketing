@@ -29,7 +29,6 @@ export default function Leads() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
   const [filters, setFilters] = useState({ status: '', campaign_id: '', search: '' });
 
   const load = useCallback(() => {
@@ -49,7 +48,11 @@ export default function Leads() {
     }
   }, [isSales, isViewer]);
 
-  const openCreate = () => { setEditing(null); setForm(emptyForm); showToast('Something went wrong', 'error'); setShowModal(true); };
+  const openCreate = () => {
+    setEditing(null);
+    setForm(emptyForm);
+    setShowModal(true);
+  };
 
   const openEdit = (l) => {
     setEditing(l);
@@ -61,21 +64,24 @@ export default function Leads() {
       campaign_id: l.campaign_id || '', source: l.source || 'linkedin',
       assigned_to: l.assigned_to || '',
     });
-    showToast('Something went wrong', 'error'); setShowModal(true);
+    setShowModal(true);
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
-    setSaving(true); showToast('Something went wrong', 'error');
+    setSaving(true);
     try {
       if (editing) {
         await leadsAPI.update(editing.id, form);
+        showToast('Lead updated successfully', 'success');
       } else {
         await leadsAPI.create(form);
+        showToast('Lead added successfully', 'success');
       }
-      setShowModal(false); load();
+      setShowModal(false);
+      load();
     } catch (err) {
-      showToast(err.response?.data?.error || 'Save failed');
+      showToast(err.response?.data?.error || 'Save failed', 'error');
     } finally {
       setSaving(false);
     }
@@ -83,8 +89,13 @@ export default function Leads() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this lead?')) return;
-    await leadsAPI.delete(id);
-    load();
+    try {
+      await leadsAPI.delete(id);
+      showToast('Lead deleted', 'success');
+      load();
+    } catch {
+      showToast('Failed to delete lead', 'error');
+    }
   };
 
   const f = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -155,7 +166,7 @@ export default function Leads() {
             <div className="empty-state">
               <div className="icon">👥</div>
               <h3>No leads found</h3>
-              <p>{isSales ? 'No leads are assigned to you yet.' : 'Add leads manually or run a campaign.'}</p>
+              <p>{isSales ? 'No leads assigned to you yet.' : 'Add leads manually or run a campaign.'}</p>
               {!isViewer && (
                 <button className="btn btn-primary" onClick={openCreate}>Add Lead</button>
               )}
@@ -242,9 +253,6 @@ export default function Leads() {
             </div>
             <form onSubmit={handleSave}>
               <div className="modal-body">
-                {error && <div className="alert alert-error">{error}</div>}
-
-                {/* Sales role — only status and notes */}
                 {isSales ? (
                   <>
                     <div style={{ marginBottom: 16, padding: 12, background: 'var(--bg)', borderRadius: 'var(--radius-sm)', fontSize: 13 }}>
@@ -259,16 +267,10 @@ export default function Leads() {
                     </div>
                     <div className="form-group">
                       <label>Notes</label>
-                      <textarea
-                        value={form.notes}
-                        onChange={f('notes')}
-                        placeholder="Add follow-up notes..."
-                        rows={5}
-                      />
+                      <textarea value={form.notes} onChange={f('notes')} placeholder="Add follow-up notes..." rows={5} />
                     </div>
                   </>
                 ) : (
-                  /* Admin / User role — full form */
                   <>
                     <div className="form-row">
                       <div className="form-group">
