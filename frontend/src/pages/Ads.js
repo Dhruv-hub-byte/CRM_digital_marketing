@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { linkedinAPI } from '../api';
 import useToastContext from '../hooks/useToastContext';
 
+const showToast = useToastContext();
+
 const STATUS_BADGE = {
   draft: 'badge-draft',
   published: 'badge-active',

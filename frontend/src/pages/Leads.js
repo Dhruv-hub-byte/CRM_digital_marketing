@@ -4,6 +4,8 @@ import { leadsAPI, campaignsAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
 import useToastContext from '../hooks/useToastContext';
 
+const showToast = useToastContext();
+
 const STATUS_OPTS = ['new', 'contacted', 'qualified', 'converted', 'lost'];
 const BADGE = {
   new: 'badge-new', contacted: 'badge-contacted',
