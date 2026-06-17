@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { adsAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { linkedinAPI } from '../api';
+import useToastContext from '../hooks/useToastContext';
 
 const STATUS_BADGE = {
   draft: 'badge-draft',
@@ -54,7 +55,7 @@ export default function Ads() {
     setEditing(null);
     setForm({ template_id: '', title: '', ad_copy: '', loom_url: '', external_ad_url: '', status: 'draft' });
     setGenVariables({});
-    setError('');
+    showToast('Something went wrong', 'error');
     setShowModal(true);
   };
 
@@ -68,13 +69,13 @@ export default function Ads() {
       external_ad_url: ad.external_ad_url || '',
       status: ad.status,
     });
-    setError('');
+    showToast('Something went wrong', 'error');
     setShowModal(true);
   };
 
   const generateCopy = async () => {
     if (!form.template_id) return setError('Select a template first');
-    setGenerating(true); setError('');
+    setGenerating(true); showToast('Something went wrong', 'error');
     try {
       const res = await adsAPI.generateCopy({
         template_id: parseInt(form.template_id),
@@ -85,6 +86,7 @@ export default function Ads() {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('❌ ' + (err.response?.data?.error || 'Generation failed. Check API key.'));
+      showToast('Something went wrong', 'error')
     } finally {
       setGenerating(false);
     }
@@ -92,8 +94,8 @@ export default function Ads() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    setError('');
-    if (!form.title || !form.ad_copy) return setError('Title and copy are required');
+    showToast('Something went wrong', 'error');
+    if (!form.title || !form.ad_copy) return showToast('Title and copy are required');
     try {
       if (editing) {
         await adsAPI.update(editing.id, form);
@@ -105,7 +107,7 @@ export default function Ads() {
       setSuccess('✅ Saved successfully');
       setTimeout(() => setSuccess(''), 2000);
     } catch (err) {
-      setError('❌ ' + (err.response?.data?.error || 'Save failed'));
+      showToast('❌ ' + (err.response?.data?.error || 'Save failed'));
     }
   };
 
@@ -133,7 +135,7 @@ const handlePublish = async (id) => {
         : '')
     );
   } catch (err) {
-    setError('❌ ' + (err.response?.data?.error || 'Publish failed'));
+    showToast('❌ ' + (err.response?.data?.error || 'Publish failed'));
   }
 };
 

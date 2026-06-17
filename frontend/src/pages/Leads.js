@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { leadsAPI, campaignsAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
+import useToastContext from '../hooks/useToastContext';
 
 const STATUS_OPTS = ['new', 'contacted', 'qualified', 'converted', 'lost'];
 const BADGE = {
@@ -48,7 +49,7 @@ export default function Leads() {
     }
   }, [isSales, isViewer]);
 
-  const openCreate = () => { setEditing(null); setForm(emptyForm); setError(''); setShowModal(true); };
+  const openCreate = () => { setEditing(null); setForm(emptyForm); showToast('Something went wrong', 'error'); setShowModal(true); };
 
   const openEdit = (l) => {
     setEditing(l);
@@ -60,12 +61,12 @@ export default function Leads() {
       campaign_id: l.campaign_id || '', source: l.source || 'linkedin',
       assigned_to: l.assigned_to || '',
     });
-    setError(''); setShowModal(true);
+    showToast('Something went wrong', 'error'); setShowModal(true);
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
-    setSaving(true); setError('');
+    setSaving(true); showToast('Something went wrong', 'error');
     try {
       if (editing) {
         await leadsAPI.update(editing.id, form);
@@ -74,7 +75,7 @@ export default function Leads() {
       }
       setShowModal(false); load();
     } catch (err) {
-      setError(err.response?.data?.error || 'Save failed');
+      showToast(err.response?.data?.error || 'Save failed');
     } finally {
       setSaving(false);
     }

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { campaignsAPI } from '../api';
 import { linkedinAPI } from '../api';
+import useToastContext from '../hooks/useToastContext';
 
 const STATUS_OPTS = ['draft', 'active', 'paused', 'completed'];
 const BADGE = { draft: 'badge-draft', active: 'badge-active', paused: 'badge-paused', completed: 'badge-completed' };
@@ -19,6 +20,7 @@ export default function Campaigns() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const showToast = useToastContext();
 
   const load = () => {
     campaignsAPI.getAll().then(r => setCampaigns(r.data)).finally(() => setLoading(false));
@@ -26,7 +28,7 @@ export default function Campaigns() {
 
   useEffect(() => { load(); }, []);
 
-  const openCreate = () => { setEditing(null); setForm(emptyForm); setError(''); setShowModal(true); };
+  const openCreate = () => { setEditing(null); setForm(emptyForm); showToast('Something went wrong', 'error'); setShowModal(true); };
   const openEdit = (c) => {
     setEditing(c);
     setForm({
@@ -37,13 +39,13 @@ export default function Campaigns() {
       end_date: c.end_date ? c.end_date.slice(0, 10) : '',
       status: c.status || 'draft',
     });
-    setError('');
+   showToast('Something went wrong', 'error');
     setShowModal(true);
   };
 
 const handleSave = async (e) => {
   e.preventDefault();
-  setSaving(true); setError('');
+  setSaving(true); showToast('Something went wrong', 'error');
   try {
     if (editing) {
       await campaignsAPI.update(editing.id, form);
@@ -68,6 +70,7 @@ const handleSave = async (e) => {
     load();
   } catch (err) {
     setError(err.response?.data?.error || 'Save failed');
+    showToast('Something went wrong', 'error')
   } finally {
     setSaving(false);
   }
