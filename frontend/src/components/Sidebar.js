@@ -31,7 +31,9 @@ export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
   const role = user?.role || 'user';
-  const navItems = allNavItems.filter(item => item.roles.includes(role));
+  const navItems = allNavItems.filter(item => 
+  Array.isArray(item.roles) && item.roles.includes(role)
+   );
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
