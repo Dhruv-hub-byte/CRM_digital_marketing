@@ -40,6 +40,7 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/linkedin', require('./routes/linkedin'));
 app.use('/api/ads', require('./routes/ads'));
+app.use('/api/landing', require('./routes/landing'));
 
 // Root endpoint
 app.get('/', (req, res) => {

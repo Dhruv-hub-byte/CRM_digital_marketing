@@ -148,8 +148,17 @@ export const adsAPI = {
   update: (id, data) => API.put(`/ads/${id}`, data),
   publish: (id) => API.post(`/ads/${id}/publish`),
   delete: (id) => API.delete(`/ads/${id}`),
+  submit: (id) => API.post(`/ads/${id}/submit`),
+  approve: (id) => API.post(`/ads/${id}/approve`),
+  reject: (id, note) => API.post(`/ads/${id}/reject`, { note }),
+  getPending: () => API.get('/ads/admin/pending'),
   auditAllAds: () => API.get('/ads/audit/all-ads'),
   auditLogs: () => API.get('/ads/audit/logs'),
+};
+
+export const landingAPI = {
+  getCampaign: (id) => axios.get(`${process.env.REACT_APP_API_URL}/landing/campaign/${id}`),
+  submitInterest: (id, data) => axios.post(`${process.env.REACT_APP_API_URL}/landing/campaign/${id}/interest`, data),
 };
 
 export default API;

@@ -4,6 +4,7 @@ import { adsAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { linkedinAPI } from '../api';
 import { showToast } from '../utils/toast';
+import { campaignsAPI } from '../api';
 
 
 
@@ -41,11 +42,20 @@ export default function Ads() {
   const [genVariables, setGenVariables] = useState({});
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [allCampaigns, setAllCampaigns] = useState([]);
+
+
 
   useEffect(() => {
     load();
     adsAPI.getTemplates().then(r => setTemplates(r.data));
   }, []);
+
+
+  useEffect(() => {
+    campaignsAPI.getAll().then(r => setAllCampaigns(r.data));
+  }, []);
+
 
   const load = () => {
     adsAPI.getAll()
@@ -113,39 +123,50 @@ export default function Ads() {
     }
   };
 
-const handlePublish = async (id) => {
-  if (!window.confirm('Publish this ad to LinkedIn?')) return;
-  try {
-    const ad = ads.find(a => a.id === id);
-    if (!ad) return;
+  const handlePublish = async (id) => {
+    if (!window.confirm('Publish this ad to LinkedIn?')) return;
+    try {
+      const ad = ads.find(a => a.id === id);
+      if (!ad) return;
 
-    // Publish to LinkedIn
-    const liRes = await linkedinAPI.publishAd({
-      ad_copy: ad.ad_copy,
-      loom_url: ad.loom_url || null,
-      campaign_id: id,
-    });
+      // Publish to LinkedIn
+      const liRes = await linkedinAPI.publishAd({
+        ad_copy: ad.ad_copy,
+        loom_url: ad.loom_url || null,
+        campaign_id: id,
+      });
 
-    // Mark as published locally
-    await adsAPI.publish(id);
-    load();
+      // Mark as published locally
+      await adsAPI.publish(id);
+      load();
 
-    setSuccess(
-      `✅ Ad published to LinkedIn! ` +
-      (liRes.data.linkedin_post_url
-        ? `View it here: ${liRes.data.linkedin_post_url}`
-        : '')
-    );
-  } catch (err) {
-    showToast('❌ ' + (err.response?.data?.error || 'Publish failed'));
-  }
-};
+      setSuccess(
+        `✅ Ad published to LinkedIn! ` +
+        (liRes.data.linkedin_post_url
+          ? `View it here: ${liRes.data.linkedin_post_url}`
+          : '')
+      );
+    } catch (err) {
+      showToast('❌ ' + (err.response?.data?.error || 'Publish failed'));
+    }
+  };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this ad?')) return;
     await adsAPI.delete(id);
     load();
   };
+
+  const handleSubmit = async (id) => {
+  if (!window.confirm('Submit this ad for admin approval?')) return;
+  try {
+    await adsAPI.submit(id);
+    showToast('Ad submitted for approval', 'info');
+    load();
+  } catch (err) {
+    showToast(err.response?.data?.error || 'Submit failed', 'error');
+  }
+};
 
   const selectedTemplate = templates.find(t => t.id === parseInt(form.template_id));
   const f = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -186,6 +207,7 @@ const handlePublish = async (id) => {
                     <th>Published</th>
                     <th>Created</th>
                     <th>Actions</th>
+                    <th>Approval</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -219,25 +241,34 @@ const handlePublish = async (id) => {
                         <div className="actions-cell">
                           {!isAdmin && (
                             <>
-                              {ad.status === 'draft' && (
+                              {ad.approval_status === 'draft' && (
                                 <>
                                   <button className="btn btn-secondary btn-sm" onClick={() => openEdit(ad)}>Edit</button>
-                                  <button className="btn btn-success btn-sm" onClick={() => handlePublish(ad.id)}>Publish</button>
+                                  <button
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => handleSubmit(ad.id)}
+                                  >
+                                    Submit
+                                  </button>
                                   <button className="btn btn-danger btn-sm" onClick={() => handleDelete(ad.id)}>Del</button>
                                 </>
                               )}
-                              {ad.status === 'published' && (
-                                <span style={{ fontSize: 12, color: 'var(--success)', fontWeight: 500 }}>✅ Live</span>
+                              {ad.approval_status === 'pending_approval' && (
+                                <span style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 500 }}>⏳ Pending</span>
+                              )}
+                              {ad.approval_status === 'approved' && (
+                                <span style={{ fontSize: 12, color: 'var(--success)', fontWeight: 500 }}>✅ Approved</span>
+                              )}
+                              {ad.approval_status === 'rejected' && (
+                                <>
+                                  <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 500 }}>❌ Rejected</span>
+                                  <button className="btn btn-secondary btn-sm" onClick={() => openEdit(ad)}>Fix</button>
+                                </>
                               )}
                             </>
                           )}
                           {isAdmin && (
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => openEdit(ad)}
-                            >
-                              View
-                            </button>
+                            <button className="btn btn-secondary btn-sm" onClick={() => openEdit(ad)}>View</button>
                           )}
                         </div>
                       </td>
@@ -267,6 +298,16 @@ const handlePublish = async (id) => {
                 <div className="form-group">
                   <label>Title *</label>
                   <input value={form.title} onChange={f('title')} placeholder="Q2 Lead Gen Campaign" required />
+                </div>
+
+                <div className="form-group">
+                  <label>Link to Campaign</label>
+                  <select value={form.campaign_id || ''} onChange={f('campaign_id')}>
+                    <option value="">No campaign</option>
+                    {allCampaigns.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Template picker */}

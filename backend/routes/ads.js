@@ -247,4 +247,161 @@ router.get('/audit/logs', auth, async (req, res) => {
     }
 });
 
+// Submit ad for approval
+router.post('/:id/submit', auth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `UPDATE marketing_ads SET approval_status='pending_approval', updated_at=NOW()
+       WHERE id=$1 AND user_id=$2 RETURNING *`,
+      [req.params.id, req.user.id]
+    );
+    if (result.rows.length === 0)
+      return res.status(403).json({ error: 'Not authorized' });
+
+    // Notify all admins
+    const admins = await pool.query(
+      "SELECT email, name FROM users WHERE role='admin'"
+    );
+    for (const admin of admins.rows) {
+      await sendEmail(
+        admin.email,
+        `Ad Pending Approval: ${result.rows[0].title}`,
+        `
+          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+            <h2 style="color:#0a66c2;">Ad Pending Your Approval</h2>
+            <p>Hi ${admin.name},</p>
+            <p><strong>${result.rows[0].title}</strong> has been submitted for approval.</p>
+            <p><strong>Ad Copy:</strong></p>
+            <p style="background:#f8fafc;padding:12px;border-radius:6px;">${result.rows[0].ad_copy}</p>
+            <a href="${process.env.FRONTEND_URL}/admin/approvals" 
+               style="background:#0a66c2;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;">
+              Review Ad
+            </a>
+          </div>
+        `
+      );
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin approve ad
+router.post('/:id/approve', auth, async (req, res) => {
+  if (req.user.role !== 'admin')
+    return res.status(403).json({ error: 'Admin only' });
+
+  try {
+    const result = await pool.query(
+      `UPDATE marketing_ads SET 
+        approval_status='approved', approved_by=$1, 
+        approved_at=NOW(), updated_at=NOW()
+       WHERE id=$2 RETURNING *`,
+      [req.user.id, req.params.id]
+    );
+
+    // Notify creator
+    const creator = await pool.query(
+      'SELECT u.email, u.name FROM users u JOIN marketing_ads ma ON ma.user_id = u.id WHERE ma.id=$1',
+      [req.params.id]
+    );
+    if (creator.rows.length > 0) {
+      await sendEmail(
+        creator.rows[0].email,
+        `✅ Your ad "${result.rows[0].title}" was approved`,
+        `
+          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+            <h2 style="color:#10b981;">Ad Approved!</h2>
+            <p>Hi ${creator.rows[0].name},</p>
+            <p>Your ad <strong>${result.rows[0].title}</strong> has been approved and published.</p>
+            <a href="${process.env.FRONTEND_URL}/ads" 
+               style="background:#0a66c2;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;">
+              View Ad
+            </a>
+          </div>
+        `
+      );
+    }
+
+    // Auto publish after approval
+    await pool.query(
+      `UPDATE marketing_ads SET status='published', published_at=NOW() WHERE id=$1`,
+      [req.params.id]
+    );
+
+    res.json({ ...result.rows[0], status: 'published' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin reject ad
+router.post('/:id/reject', auth, async (req, res) => {
+  if (req.user.role !== 'admin')
+    return res.status(403).json({ error: 'Admin only' });
+
+  const { note } = req.body;
+  try {
+    const result = await pool.query(
+      `UPDATE marketing_ads SET 
+        approval_status='rejected', approval_note=$1,
+        approved_by=$2, approved_at=NOW(), updated_at=NOW()
+       WHERE id=$3 RETURNING *`,
+      [note || 'No reason provided', req.user.id, req.params.id]
+    );
+
+    // Notify creator
+    const creator = await pool.query(
+      'SELECT u.email, u.name FROM users u JOIN marketing_ads ma ON ma.user_id = u.id WHERE ma.id=$1',
+      [req.params.id]
+    );
+    if (creator.rows.length > 0) {
+      await sendEmail(
+        creator.rows[0].email,
+        `❌ Your ad "${result.rows[0].title}" was rejected`,
+        `
+          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+            <h2 style="color:#ef4444;">Ad Rejected</h2>
+            <p>Hi ${creator.rows[0].name},</p>
+            <p>Your ad <strong>${result.rows[0].title}</strong> was rejected.</p>
+            <p><strong>Reason:</strong> ${note || 'No reason provided'}</p>
+            <p>Please update your ad and resubmit.</p>
+            <a href="${process.env.FRONTEND_URL}/ads" 
+               style="background:#0a66c2;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;">
+              Edit Ad
+            </a>
+          </div>
+        `
+      );
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all pending approvals (admin)
+router.get('/admin/pending', auth, async (req, res) => {
+  if (req.user.role !== 'admin')
+    return res.status(403).json({ error: 'Admin only' });
+  try {
+    const result = await pool.query(
+      `SELECT ma.*, u.name as creator_name, u.email as creator_email,
+              c.name as campaign_name, at.name as template_name
+       FROM marketing_ads ma
+       LEFT JOIN users u ON ma.user_id = u.id
+       LEFT JOIN campaigns c ON ma.campaign_id = c.id
+       LEFT JOIN ad_templates at ON ma.template_id = at.id
+       WHERE ma.approval_status = 'pending_approval'
+       ORDER BY ma.updated_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

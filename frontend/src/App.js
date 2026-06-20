@@ -15,6 +15,9 @@ import Settings from './pages/Settings';
 import LinkedIn from './pages/LinkedIn';
 import Ads from './pages/Ads';
 
+import AdminApprovals from './pages/AdminApprovals';
+import LandingPage from './pages/LandingPage';
+
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>;
@@ -53,6 +56,8 @@ function AppRoutes() {
       <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
       <Route path="/admin/logs" element={<AdminRoute><AdminLogs /></AdminRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/admin/approvals" element={<AdminRoute><AdminApprovals /></AdminRoute>} />
+      <Route path="/landing/:campaignId" element={<LandingPage />} /> 
     </Routes>
   );
 }
