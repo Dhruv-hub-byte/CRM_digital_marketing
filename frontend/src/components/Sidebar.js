@@ -9,13 +9,13 @@ const allNavItems = [
   { label: 'Analytics', icon: '📈', path: '/analytics', roles: ['admin', 'user', 'viewer'] },
   { label: 'LinkedIn Ads', icon: '🔗', path: '/linkedin', roles: ['admin', 'user'] },
   { label: 'Ads', icon: '📢', path: '/ads', roles: ['admin', 'user', 'sales'] },
-  { label: 'Ad Approvals', icon: '✅', path: '/admin/approvals' },
   { label: 'Settings', icon: '⚙️', path: '/settings', roles: ['admin', 'user', 'sales', 'viewer'] },
 ];
 
 const adminItems = [
   { label: 'User Management', icon: '🛡️', path: '/admin/users' },
   { label: 'Audit Logs', icon: '📋', path: '/admin/logs' },
+  { label: 'Ad Approvals', icon: '✅', path: '/admin/approvals' },
 ];
 
 const ROLE_COLORS = {
