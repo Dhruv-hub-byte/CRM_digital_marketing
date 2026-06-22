@@ -13,6 +13,14 @@ const STATUS_BADGE = {
   published: 'badge-active',
 };
 
+
+const APPROVAL_BADGE = {
+  draft: 'badge-draft',
+  pending_approval: 'badge-contacted',
+  approved: 'badge-active',
+  rejected: 'badge-lost',
+};
+
 const EXTERNAL_TOOLS = [
   { name: 'Canva', url: 'https://canva.com/create/ads', icon: '🎨', desc: 'Design visual ads' },
   { name: 'AdCreative.ai', url: 'https://adcreative.ai', icon: '🤖', desc: 'AI ad creatives' },
@@ -20,6 +28,16 @@ const EXTERNAL_TOOLS = [
   { name: 'Google Ads', url: 'https://ads.google.com', icon: '🔍', desc: 'Search & display' },
   { name: 'LinkedIn Ads', url: 'https://www.linkedin.com/campaignmanager', icon: '💼', desc: 'LinkedIn campaigns' },
 ];
+
+const emptyForm = {
+  template_id: '',
+  title: '',
+  ad_copy: '',
+  loom_url: '',
+  external_ad_url: '',
+  status: 'draft',
+  campaign_id: '',
+};
 
 export default function Ads() {
   const { user } = useAuth();
@@ -49,12 +67,15 @@ export default function Ads() {
   useEffect(() => {
     load();
     adsAPI.getTemplates().then(r => setTemplates(r.data));
-  }, []);
-
-
-  useEffect(() => {
-    campaignsAPI.getAll().then(r => setAllCampaigns(r.data));
-  }, []);
+    campaignsAPI.getAll().then(r => {
+      const campaigns = r.data;
+      if (isSales) {
+        setAllCampaigns(campaigns.filter(c => c.status === 'active'));
+      } else {
+        setAllCampaigns(campaigns);
+      }
+    });
+  }, [isSales]);
 
 
   const load = () => {
@@ -80,46 +101,44 @@ export default function Ads() {
       loom_url: ad.loom_url || '',
       external_ad_url: ad.external_ad_url || '',
       status: ad.status,
+      campaign_id: ad.campaign_id || '',
     });
-    showToast('Something went wrong', 'error');
     setShowModal(true);
   };
 
   const generateCopy = async () => {
     if (!form.template_id) return setError('Select a template first');
-    setGenerating(true); showToast('Something went wrong', 'error');
+    setGenerating(true); 
     try {
       const res = await adsAPI.generateCopy({
         template_id: parseInt(form.template_id),
         variables: genVariables,
       });
       setForm(prev => ({ ...prev, ad_copy: res.data.ad_copy }));
-      setSuccess('✅ Copy generated with AI');
+      showToast('Copy generated with AI', 'success');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('❌ ' + (err.response?.data?.error || 'Generation failed. Check API key.'));
-      showToast('Something went wrong', 'error')
     } finally {
       setGenerating(false);
     }
   };
 
-  const handleSave = async (e) => {
+   const handleSave = async (e) => {
     e.preventDefault();
-    showToast('Something went wrong', 'error');
-    if (!form.title || !form.ad_copy) return showToast('Title and copy are required');
+    if (!form.title || !form.ad_copy) return showToast('Title and copy are required', 'error');
     try {
       if (editing) {
         await adsAPI.update(editing.id, form);
+        showToast('Ad updated successfully', 'success');
       } else {
         await adsAPI.create(form);
+        showToast('Ad created successfully', 'success');
       }
       setShowModal(false);
       load();
-      setSuccess('✅ Saved successfully');
-      setTimeout(() => setSuccess(''), 2000);
     } catch (err) {
-      showToast('❌ ' + (err.response?.data?.error || 'Save failed'));
+      showToast(err.response?.data?.error || 'Save failed', 'error');
     }
   };
 
@@ -128,48 +147,52 @@ export default function Ads() {
     try {
       const ad = ads.find(a => a.id === id);
       if (!ad) return;
-
-      // Publish to LinkedIn
       const liRes = await linkedinAPI.publishAd({
         ad_copy: ad.ad_copy,
         loom_url: ad.loom_url || null,
         campaign_id: id,
       });
-
-      // Mark as published locally
       await adsAPI.publish(id);
       load();
-
-      setSuccess(
-        `✅ Ad published to LinkedIn! ` +
-        (liRes.data.linkedin_post_url
-          ? `View it here: ${liRes.data.linkedin_post_url}`
-          : '')
-      );
+      showToast('Ad published to LinkedIn', 'success');
+      if (liRes.data.linkedin_post_url) {
+        window.open(liRes.data.linkedin_post_url, '_blank');
+      }
     } catch (err) {
-      showToast('❌ ' + (err.response?.data?.error || 'Publish failed'));
+      showToast(err.response?.data?.error || 'Publish failed', 'error');
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this ad?')) return;
-    await adsAPI.delete(id);
-    load();
+    try {
+      await adsAPI.delete(id);
+      showToast('Ad deleted', 'success');
+      load();
+    } catch {
+      showToast('Delete failed', 'error');
+    }
   };
 
   const handleSubmit = async (id) => {
-  if (!window.confirm('Submit this ad for admin approval?')) return;
-  try {
-    await adsAPI.submit(id);
-    showToast('Ad submitted for approval', 'info');
-    load();
-  } catch (err) {
-    showToast(err.response?.data?.error || 'Submit failed', 'error');
-  }
-};
+    if (!window.confirm('Submit this ad for admin approval?')) return;
+    try {
+      await adsAPI.submit(id);
+      showToast('Ad submitted for approval', 'info');
+      load();
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Submit failed', 'error');
+    }
+  };
 
   const selectedTemplate = templates.find(t => t.id === parseInt(form.template_id));
   const f = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const getCampaignName = (campaignId) => {
+    if (!campaignId) return '-';
+    const c = allCampaigns.find(c => c.id === parseInt(campaignId));
+    return c?.name || `Campaign #${campaignId}`;
+  };
 
   return (
     <Layout
@@ -200,20 +223,24 @@ export default function Ads() {
                 <thead>
                   <tr>
                     <th>Title</th>
+                    <th>Campaign</th>
                     <th>Creator</th>
                     <th>Template</th>
                     <th>Status</th>
+                    <th>Approval</th>
                     <th>External Ad</th>
                     <th>Published</th>
                     <th>Created</th>
                     <th>Actions</th>
-                    <th>Approval</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ads.map(ad => (
                     <tr key={ad.id}>
                       <td style={{ fontWeight: 600 }}>{ad.title}</td>
+                      <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                        {ad.campaign_name || getCampaignName(ad.campaign_id)}
+                      </td>
                       <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{ad.creator_name || 'System'}</td>
                       <td style={{ fontSize: 13 }}>{ad.template_name || '-'}</td>
                       <td><span className={`badge ${STATUS_BADGE[ad.status] || 'badge-draft'}`}>{ad.status}</span></td>
@@ -241,7 +268,7 @@ export default function Ads() {
                         <div className="actions-cell">
                           {!isAdmin && (
                             <>
-                              {ad.approval_status === 'draft' && (
+                              {(ad.approval_status === 'draft' || !ad.approval_status) && (
                                 <>
                                   <button className="btn btn-secondary btn-sm" onClick={() => openEdit(ad)}>Edit</button>
                                   <button
@@ -261,10 +288,11 @@ export default function Ads() {
                               )}
                               {ad.approval_status === 'rejected' && (
                                 <>
-                                  <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 500 }}>❌ Rejected</span>
                                   <button className="btn btn-secondary btn-sm" onClick={() => openEdit(ad)}>Fix</button>
+                                  <button className="btn btn-danger btn-sm" onClick={() => handleDelete(ad.id)}>Del</button>
                                 </>
                               )}
+
                             </>
                           )}
                           {isAdmin && (
@@ -301,13 +329,30 @@ export default function Ads() {
                 </div>
 
                 <div className="form-group">
-                  <label>Link to Campaign</label>
-                  <select value={form.campaign_id || ''} onChange={f('campaign_id')}>
-                    <option value="">No campaign</option>
-                    {allCampaigns.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
+                  <label>
+                    Link to Campaign
+                    {isSales && (
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
+                        (active campaigns only)
+                      </span>
+                    )}
+                  </label>
+                  {allCampaigns.length === 0 ? (
+                    <div style={{ fontSize: 13, color: 'var(--danger)', padding: '8px 12px', background: '#fee2e2', borderRadius: 6 }}>
+                      {isSales
+                        ? 'No active campaigns. Ask admin to activate one first.'
+                        : 'No campaigns yet. Create a campaign first.'}
+                    </div>
+                  ) : (
+                    <select value={form.campaign_id} onChange={f('campaign_id')}>
+                      <option value="">Select campaign...</option>
+                      {allCampaigns.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {c.status !== 'active' ? `(${c.status})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {/* Template picker */}
@@ -319,7 +364,6 @@ export default function Ads() {
                   </select>
                 </div>
 
-                {/* Template variables + AI generate */}
                 {selectedTemplate && (
                   <div style={{
                     background: 'var(--bg)', padding: 14,
