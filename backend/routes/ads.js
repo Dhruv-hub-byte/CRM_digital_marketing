@@ -79,15 +79,72 @@ router.post('/generate-copy', auth, async (req, res) => {
     }
 });
 
+// Admin: get all ads with audit log
+router.get('/audit/all-ads', auth, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+    try {
+        const result = await pool.query(
+            `SELECT ma.*, u.name as creator_name, at.name as template_name 
+       FROM marketing_ads ma 
+       LEFT JOIN users u ON ma.user_id = u.id 
+       LEFT JOIN ad_templates at ON ma.template_id = at.id 
+       ORDER BY ma.published_at DESC NULLS LAST`
+        );
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Admin: audit log
+router.get('/audit/logs', auth, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+    try {
+        const result = await pool.query(
+            `SELECT aal.*, u.name as admin_name, u2.name as creator_name 
+       FROM ad_audit_log aal 
+       LEFT JOIN users u ON aal.admin_id = u.id 
+       LEFT JOIN users u2 ON aal.creator_id = u2.id 
+       ORDER BY aal.created_at DESC LIMIT 100`
+        );
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get all pending approvals (admin)
+router.get('/admin/pending', auth, async (req, res) => {
+  if (req.user.role !== 'admin')
+    return res.status(403).json({ error: 'Admin only' });
+  try {
+    const result = await pool.query(
+      `SELECT ma.*, u.name as creator_name, u.email as creator_email,
+              c.name as campaign_name, at.name as template_name
+       FROM marketing_ads ma
+       LEFT JOIN users u ON ma.user_id = u.id
+       LEFT JOIN campaigns c ON ma.campaign_id = c.id
+       LEFT JOIN ad_templates at ON ma.template_id = at.id
+       WHERE ma.approval_status = 'pending_approval'
+       ORDER BY ma.updated_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;
+
 // Create ad
 router.post('/', auth, noViewer, async (req, res) => {
-    const { template_id, title, ad_copy, loom_url, status, external_ad_url } = req.body;
+    const { template_id, title, ad_copy, loom_url, status, external_ad_url,campaign_id } = req.body;
     if (!title || !ad_copy) return res.status(400).json({ error: 'Title and copy required' });
 
     try {
         const result = await pool.query(
-            `INSERT INTO marketing_ads (user_id, template_id, title, ad_copy, loom_url, status,external_ad_url)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+            `INSERT INTO marketing_ads (user_id, template_id, title, ad_copy, loom_url, status,external_ad_url,campaign_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7 ,$8) RETURNING *`,
             [req.user.id, template_id || null, title, ad_copy, loom_url || null, status || 'draft', external_ad_url || null]
         );
         res.status(201).json(result.rows[0]);
@@ -145,12 +202,12 @@ router.get('/:id', auth, async (req, res) => {
 
 // Update ad
 router.put('/:id', auth, noViewer, async (req, res) => {
-    const { title, ad_copy, loom_url, status, external_ad_url } = req.body;
+    const { title, ad_copy, loom_url, status, external_ad_url, campaign_id } = req.body;
     const isAdmin = req.user.role === 'admin';
     try {
         const result = await pool.query(
-            `UPDATE marketing_ads SET title=$1, ad_copy=$2, loom_url=$3, status=$4, external_ad_url=$5, updated_at=NOW()
-       WHERE id=$6 AND (user_id=$7 OR $8::boolean) RETURNING *`,
+            `UPDATE marketing_ads SET title=$1, ad_copy=$2, loom_url=$3, status=$4, external_ad_url=$5, campaign_id=$6, updated_at=NOW()
+       WHERE id=$6 AND (user_id=$7 AND (user_id=$8 OR $9::boolean) RETURNING *`,
             [title, ad_copy, loom_url || null, status, external_ad_url || null, req.params.id, req.user.id, isAdmin]
         );
         if (result.rows.length === 0) return res.status(403).json({ error: 'Not authorized' });
@@ -199,53 +256,28 @@ router.post('/:id/publish', auth, noViewer, async (req, res) => {
 
 // Delete ad
 router.delete('/:id', auth, noViewer, async (req, res) => {
-    try {
-        const result = await pool.query('DELETE FROM marketing_ads WHERE id=$1 AND user_id=$2 RETURNING *', [req.params.id, req.user.id]);
-        if (result.rows.length === 0) return res.status(403).json({ error: 'Not authorized' });
-        await pool.query(
-            `INSERT INTO ad_audit_log (action, ad_id, creator_id, details)
+  try {
+    const ad = await pool.query(
+      'SELECT * FROM marketing_ads WHERE id=$1 AND user_id=$2',
+      [req.params.id, req.user.id]
+    );
+    if (ad.rows.length === 0) return res.status(403).json({ error: 'Not authorized' });
+
+    // Log BEFORE delete so FK is still valid
+    await pool.query(
+      `INSERT INTO ad_audit_log (action, ad_id, creator_id, details)
        VALUES ('deleted', $1, $2, $3)`,
-            [result.rows[0].id, req.user.id, JSON.stringify({ title: result.rows[0].title })]
-        );
-        res.json({ message: 'Ad deleted' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+      [ad.rows[0].id, req.user.id, JSON.stringify({ title: ad.rows[0].title })]
+    );
+
+    await pool.query('DELETE FROM marketing_ads WHERE id=$1', [req.params.id]);
+    res.json({ message: 'Ad deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Admin: get all ads with audit log
-router.get('/audit/all-ads', auth, async (req, res) => {
-    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
-    try {
-        const result = await pool.query(
-            `SELECT ma.*, u.name as creator_name, at.name as template_name 
-       FROM marketing_ads ma 
-       LEFT JOIN users u ON ma.user_id = u.id 
-       LEFT JOIN ad_templates at ON ma.template_id = at.id 
-       ORDER BY ma.published_at DESC NULLS LAST`
-        );
-        res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 
-// Admin: audit log
-router.get('/audit/logs', auth, async (req, res) => {
-    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
-    try {
-        const result = await pool.query(
-            `SELECT aal.*, u.name as admin_name, u2.name as creator_name 
-       FROM ad_audit_log aal 
-       LEFT JOIN users u ON aal.admin_id = u.id 
-       LEFT JOIN users u2 ON aal.creator_id = u2.id 
-       ORDER BY aal.created_at DESC LIMIT 100`
-        );
-        res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 
 // Submit ad for approval
 router.post('/:id/submit', auth, async (req, res) => {
@@ -383,25 +415,3 @@ router.post('/:id/reject', auth, async (req, res) => {
   }
 });
 
-// Get all pending approvals (admin)
-router.get('/admin/pending', auth, async (req, res) => {
-  if (req.user.role !== 'admin')
-    return res.status(403).json({ error: 'Admin only' });
-  try {
-    const result = await pool.query(
-      `SELECT ma.*, u.name as creator_name, u.email as creator_email,
-              c.name as campaign_name, at.name as template_name
-       FROM marketing_ads ma
-       LEFT JOIN users u ON ma.user_id = u.id
-       LEFT JOIN campaigns c ON ma.campaign_id = c.id
-       LEFT JOIN ad_templates at ON ma.template_id = at.id
-       WHERE ma.approval_status = 'pending_approval'
-       ORDER BY ma.updated_at DESC`
-    );
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-module.exports = router;
