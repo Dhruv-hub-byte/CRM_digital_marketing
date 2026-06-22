@@ -42,6 +42,7 @@ const emptyForm = {
 export default function Ads() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const isSales = user?.role === 'sales';
 
   const [ads, setAds] = useState([]);
   const [templates, setTemplates] = useState([]);
