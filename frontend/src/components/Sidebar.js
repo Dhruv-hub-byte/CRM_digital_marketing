@@ -36,9 +36,9 @@ export default function Sidebar({ isOpen, onClose }) {
    );
 
   // Close sidebar on route change (mobile)
-  useEffect(() => {
-    onClose();
-  }, [location.pathname]);
+useEffect(() => {
+  onClose();
+}, [location.pathname, onClose]);
 
   const handleNav = (path) => {
     navigate(path);
@@ -49,6 +49,8 @@ export default function Sidebar({ isOpen, onClose }) {
     logout();
     onClose();
   };
+
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
   return (
     <>

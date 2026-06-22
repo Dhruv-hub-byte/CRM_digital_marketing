@@ -10,7 +10,7 @@ const BADGE = { draft: 'badge-draft', active: 'badge-active', paused: 'badge-pau
 
 const emptyForm = {
   name: '', objective: '', industry: '', location: '',
-  audience_size: '', budget: '', ad_copy: '', start_date: '', end_date: '', status: 'draft'
+  audience_size: '', budget: '', ad_copy: '', start_date: '', end_date: '', status: 'draft', creative_url: '' 
 };
 
 export default function Campaigns() {
@@ -29,7 +29,7 @@ export default function Campaigns() {
 
   useEffect(() => { load(); }, []);
 
-  const openCreate = () => { setEditing(null); setForm(emptyForm); showToast('Something went wrong', 'error'); setShowModal(true); };
+  const openCreate = () => { setEditing(null); setForm(emptyForm);  setShowModal(true); };
   const openEdit = (c) => {
     setEditing(c);
     setForm({
@@ -40,13 +40,13 @@ export default function Campaigns() {
       end_date: c.end_date ? c.end_date.slice(0, 10) : '',
       status: c.status || 'draft',
     });
-   showToast('Something went wrong', 'error');
+   
     setShowModal(true);
   };
 
 const handleSave = async (e) => {
   e.preventDefault();
-  setSaving(true); showToast('Something went wrong', 'error');
+  setSaving(true); 
   try {
     if (editing) {
       await campaignsAPI.update(editing.id, form);
@@ -71,7 +71,6 @@ const handleSave = async (e) => {
     load();
   } catch (err) {
     setError(err.response?.data?.error || 'Save failed');
-    showToast('Something went wrong', 'error')
   } finally {
     setSaving(false);
   }
@@ -81,6 +80,13 @@ const handleSave = async (e) => {
     if (!window.confirm('Delete this campaign?')) return;
     await campaignsAPI.delete(id);
     load();
+    try {
+      await campaignsAPI.delete(id);
+      showToast('Campaign deleted', 'success');
+      load();
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Delete failed', 'error');
+    }
   };
 
   const f = (k) => (e) => setForm({ ...form, [k]: e.target.value });
