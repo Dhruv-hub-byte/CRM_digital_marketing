@@ -50,13 +50,14 @@ export default function Ads() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({
-    template_id: '',
-    title: '',
-    ad_copy: '',
-    loom_url: '',
-    external_ad_url: '',
-    status: 'draft',
-  });
+  template_id: '',
+  title: '',
+  ad_copy: '',
+  loom_url: '',
+  external_ad_url: '',
+  status: 'draft',
+  campaign_id: '',   // ← ADD THIS
+});
   const [generating, setGenerating] = useState(false);
   const [genVariables, setGenVariables] = useState({});
   const [error, setError] = useState('');
@@ -245,6 +246,11 @@ export default function Ads() {
                       <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{ad.creator_name || 'System'}</td>
                       <td style={{ fontSize: 13 }}>{ad.template_name || '-'}</td>
                       <td><span className={`badge ${STATUS_BADGE[ad.status] || 'badge-draft'}`}>{ad.status}</span></td>
+                      <td>
+                        <span className={`badge ${APPROVAL_BADGE[ad.approval_status] || 'badge-draft'}`}>
+                          {ad.approval_status || 'draft'}
+                        </span>
+                      </td>
                       <td>
                         {ad.external_ad_url ? (
                           <a
