@@ -94,6 +94,7 @@ export const campaignsAPI = {
   update: (id, data) => API.put(`/campaigns/${id}`, data),
   delete: (id) => API.delete(`/campaigns/${id}`),
   getAnalytics: (id) => API.get(`/campaigns/${id}/analytics`),
+  getCampaignAds: (id) => API.get(`/campaigns/${id}/ads`),
 };
 
 export const leadsAPI = {
