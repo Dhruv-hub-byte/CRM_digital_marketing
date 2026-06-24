@@ -98,12 +98,13 @@ router.post('/', auth, noViewer, async (req, res) => {
 
 // Update lead
 router.put('/:id', auth, noViewer, async (req, res) => {
-  const { name, email, phone, company, job_title, industry, linkedin_url, status, notes, assigned_to } = req.body;
+  const { name, email, phone, company, job_title, industry, linkedin_url, status, notes, assigned_to, campaign_id } = req.body;
   const role = req.user.role;
   try {
-    // Get old status before update for comparison
-    const oldLead = await pool.query('SELECT status FROM leads WHERE id=$1', [req.params.id]);
+    // Fetch both status AND campaign_id before update
+    const oldLead = await pool.query('SELECT status, campaign_id FROM leads WHERE id=$1', [req.params.id]);
     const oldStatus = oldLead.rows[0]?.status;
+    const oldCampaignId = oldLead.rows[0]?.campaign_id;
 
     let result;
 
@@ -117,14 +118,31 @@ router.put('/:id', auth, noViewer, async (req, res) => {
         return res.status(403).json({ error: 'Not authorized to edit this lead' });
     } else {
       result = await pool.query(
-        `UPDATE leads SET name=$1, email=$2, phone=$3, company=$4, job_title=$5, industry=$6, 
-         linkedin_url=$7, status=$8, notes=$9, assigned_to=$10, updated_at=NOW()
-         WHERE id=$11 RETURNING *`,
-        [name, email, phone, company, job_title, industry, linkedin_url, status, notes, assigned_to || null, req.params.id]
+        `UPDATE leads SET name=$1, email=$2, phone=$3, company=$4, job_title=$5, industry=$6,
+         linkedin_url=$7, status=$8, notes=$9, assigned_to=$10, campaign_id=$11, updated_at=NOW()
+         WHERE id=$12 RETURNING *`,
+        [name, email, phone, company, job_title, industry, linkedin_url, status, notes, assigned_to || null, campaign_id || null, req.params.id]
       );
+
+      // Sync leads_count if campaign changed
+      const newCampaignId = campaign_id || null;
+      if (String(oldCampaignId || '') !== String(newCampaignId || '')) {
+        if (oldCampaignId) {
+          await pool.query(
+            'UPDATE campaigns SET leads_count = GREATEST(leads_count - 1, 0) WHERE id=$1',
+            [oldCampaignId]
+          );
+        }
+        if (newCampaignId) {
+          await pool.query(
+            'UPDATE campaigns SET leads_count = leads_count + 1 WHERE id=$1',
+            [newCampaignId]
+          );
+        }
+      }
     }
 
-    // Send response first
+    // Send response
     res.json(result.rows[0]);
 
     // Fire email after response if status changed
